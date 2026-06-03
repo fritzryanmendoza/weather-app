@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en" class="bg-slate-900 text-slate-100 antialiased font-sans">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weather Dashboard</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    colors: { slate: { 850: '#151f32' } }
+                }
+            }
+        }
+    </script>
+    <style>
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.6);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(71, 85, 105, 0.4);
+        }
+
+        .hover-glass:hover {
+            background: rgba(51, 65, 85, 0.7);
+            border-color: rgba(100, 116, 139, 0.5);
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+    </style>
+</head>
+
+<body class="min-h-screen flex flex-col">
+
+    <div id="toastContainer" class="fixed top-4 right-4 z-50 flex flex-col gap-2"></div>
+
+    <header class="glass-panel sticky top-0 z-40 border-b-0 border-slate-700/50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-lg bg-blue-500/20 text-blue-400 flex items-center justify-center text-xl">
+                    <i class="fa-solid fa-cloud-sun"></i>
+                </div>
+                <h1 class="text-xl font-semibold tracking-tight">Weather</h1>
+            </div>
+
+            <form id="searchForm" class="relative w-full max-w-md">
+                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                </div>
+                <input type="text" id="searchInput" placeholder="Search city..." class="block w-full pl-10 pr-3 py-2 border border-slate-700 rounded-lg leading-5 bg-slate-800/50 text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors sm:text-sm" autocomplete="off">
+            </form>
+
+            <button id="openSettingsBtn" class="text-sm font-medium text-slate-300 hover:text-white transition-colors flex items-center gap-2 px-3 py-2 rounded-md hover:bg-slate-800">
+                <i class="fa-solid fa-gear"></i>
+                <span>API Settings</span>
+            </button>
+        </div>
+    </header>
+
+    <div id="demoBanner" class="bg-blue-900/40 border-b border-blue-800/50 text-blue-200 text-sm py-2 hidden">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-center items-center gap-2">
+            <i class="fa-solid fa-circle-info"></i>
+            <span>Viewing demo data. Connect your OpenWeather API key for live weather updates.</span>
+        </div>
+    </div>
+
+    <main class="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        <div class="lg:col-span-2 space-y-6">
+            <div class="glass-panel rounded-2xl p-8 relative overflow-hidden transition-all duration-300">
+                <div class="absolute top-0 right-0 p-8 opacity-20 text-9xl" id="heroIconBg">
+                    <i class="fa-solid fa-cloud"></i>
+                </div>
+                <div class="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
+                    <div>
+                        <h2 id="cityName" class="text-4xl font-bold tracking-tight mb-1">--</h2>
+                        <p id="currentDate" class="text-slate-400 text-sm font-medium">--</p>
+                        <div class="mt-6 flex items-baseline gap-4">
+                            <span id="currentTemp" class="text-6xl font-bold tracking-tighter">--°</span>
+                            <div class="flex flex-col text-slate-300">
+                                <span id="weatherCondition" class="text-lg capitalize font-medium">--</span>
+                                <span class="text-sm">H: <span id="tempHigh">--°</span> L: <span id="tempLow">--°</span></span>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="weatherIcon" class="text-7xl text-blue-400 drop-shadow-lg">
+                        <i class="fa-solid fa-temperature-empty"></i>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div class="glass-panel rounded-xl p-5 hover-glass transition-all duration-300">
+                    <div class="text-slate-400 text-sm mb-2 flex items-center gap-2"><i class="fa-solid fa-temperature-half"></i> Feels Like</div>
+                    <div id="feelsLike" class="text-2xl font-semibold">--°</div>
+                </div>
+                <div class="glass-panel rounded-xl p-5 hover-glass transition-all duration-300">
+                    <div class="text-slate-400 text-sm mb-2 flex items-center gap-2"><i class="fa-solid fa-wind"></i> Wind</div>
+                    <div id="windSpeed" class="text-2xl font-semibold">--</div>
+                </div>
+                <div class="glass-panel rounded-xl p-5 hover-glass transition-all duration-300">
+                    <div class="text-slate-400 text-sm mb-2 flex items-center gap-2"><i class="fa-solid fa-droplet"></i> Humidity</div>
+                    <div id="humidity" class="text-2xl font-semibold">--%</div>
+                </div>
+                <div class="glass-panel rounded-xl p-5 hover-glass transition-all duration-300">
+                    <div class="text-slate-400 text-sm mb-2 flex items-center gap-2"><i class="fa-solid fa-gauge-high"></i> Pressure</div>
+                    <div id="pressure" class="text-2xl font-semibold">--</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="space-y-6">
+            <div class="glass-panel rounded-2xl p-6">
+                <h3 class="text-sm font-medium text-slate-400 mb-4 uppercase tracking-wider">5-Day Forecast</h3>
+                <div id="forecastList" class="space-y-4">
+                </div>
+            </div>
+
+            <div class="glass-panel rounded-2xl p-6">
+                <h3 class="text-sm font-medium text-slate-400 mb-4 uppercase tracking-wider">Recent Searches</h3>
+                <div id="recentSearches" class="flex flex-wrap gap-2">
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div id="apiModal" class="fixed inset-0 z-50 hidden">
+        <div class="absolute inset-0 bg-slate-950/80 backdrop-blur-sm" id="closeModalBg"></div>
+        <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full max-w-md">
+            <div class="glass-panel rounded-2xl p-6 border border-slate-600 shadow-2xl">
+                <div class="flex justify-between items-center mb-5">
+                    <h2 class="text-xl font-semibold">API Connection</h2>
+                    <button id="closeModalBtn" class="text-slate-400 hover:text-white transition-colors">
+                        <i class="fa-solid fa-xmark text-lg"></i>
+                    </button>
+                </div>
+                <p class="text-sm text-slate-400 mb-6">
+                    Connect your OpenWeatherMap API key to fetch live data. Without a key, the dashboard runs in demo mode.
+                </p>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-300 mb-1">OpenWeather API Key</label>
+                        <input type="password" id="apiKeyInput" placeholder="Enter your key..." class="block w-full px-3 py-2 border border-slate-700 rounded-lg bg-slate-900/50 text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                    </div>
+                    <div class="flex items-center gap-3 pt-2">
+                        <button id="saveKeyBtn" class="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-medium py-2 px-4 rounded-lg transition-colors">
+                            Save Key
+                        </button>
+                        <button id="disconnectKeyBtn" class="hidden flex-1 bg-slate-700 hover:bg-slate-600 text-white font-medium py-2 px-4 rounded-lg transition-colors">
+                            Disconnect
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        $(document).ready(function () {
+            const STORAGE_KEY = 'weather_api_key';
+            let apiKey = localStorage.getItem(STORAGE_KEY) || '';
+            let recentSearches = JSON.parse(localStorage.getItem('weather_recent')) || ['San Francisco', 'London', 'Tokyo'];
+
+            const $searchForm = $('#searchForm');
+            const $searchInput = $('#searchInput');
+            const $modal = $('#apiModal');
+            const $apiKeyInput = $('#apiKeyInput');
+            const $demoBanner = $('#demoBanner');
+
+            init();
+
+            function init() {
+                updateUIState();
+                renderRecentSearches();
+                fetchWeatherData(recentSearches[0] || 'San Francisco');
+                $searchInput.focus();
+            }
+
+            function fetchWeatherData(city) {
+                if (!apiKey) {
+                    showToast('Viewing demo data for ' + city, 'info');
+                    renderDashboard(generateMockData(city));
+                    addToRecent(city);
+                    return;
+                }
+
+                const weatherUrl = `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(city)}&units=metric&appid=${apiKey}`;
+                const forecastUrl = `https://api.openweathermap.org/data/2.5/forecast?q=${encodeURIComponent(city)}&units=metric&appid=${apiKey}`;
+
+                $.when(
+                    $.ajax({ url: weatherUrl, type: 'GET' }),
+                    $.ajax({ url: forecastUrl, type: 'GET' })
+                ).done(function (weatherRes, forecastRes) {
+                    const currentData = weatherRes[0];
+                    const forecastData = forecastRes[0];
+
+                    const formattedData = formatApiData(currentData, forecastData);
+                    renderDashboard(formattedData);
+                    addToRecent(currentData.name);
+
+                }).fail(function (jqXHR) {
+                    if (jqXHR.status === 401 || jqXHR.status === 403) {
+                        showToast('Invalid API key. Reverting to demo mode.', 'error');
+                        disconnectKey();
+                        fetchWeatherData(city);
+                    } else if (jqXHR.status === 404) {
+                        showToast('City not found.', 'error');
+                    } else {
+                        showToast('Failed to connect to weather service.', 'error');
+                    }
+                });
+            }
+
+            function renderDashboard(data) {
+                const dateOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+                $('#currentDate').text(new Date().toLocaleDateString('en-US', dateOptions));
+
+                $('#cityName').text(data.current.name);
+                $('#currentTemp').text(`${Math.round(data.current.temp)}°`);
+                $('#weatherCondition').text(data.current.condition);
+                $('#tempHigh').text(`${Math.round(data.current.high)}°`);
+                $('#tempLow').text(`${Math.round(data.current.low)}°`);
+
+                $('#feelsLike').text(`${Math.round(data.current.feelsLike)}°`);
+                $('#windSpeed').text(`${data.current.wind} km/h`);
+                $('#humidity').text(`${data.current.humidity}%`);
+                $('#pressure').text(`${data.current.pressure} hPa`);
+
+                const iconClass = getWeatherIcon(data.current.condition);
+                $('#weatherIcon').html(`<i class="${iconClass}"></i>`);
+                $('#heroIconBg').html(`<i class="${iconClass}"></i>`);
+
+                const $forecastList = $('#forecastList');
+                $forecastList.empty();
+                data.forecast.forEach(day => {
+                    const fIcon = getWeatherIcon(day.condition);
+                    const html = `
+                        <div class="flex items-center justify-between py-2 border-b border-slate-700/50 last:border-0 hover:bg-slate-800/30 rounded px-2 transition-colors cursor-default">
+                            <span class="w-24 text-slate-300 font-medium">${day.dayName}</span>
+                            <i class="${fIcon} text-slate-400 w-8 text-center"></i>
+                            <div class="flex gap-4 w-24 justify-end text-sm">
+                                <span class="font-medium">${Math.round(day.high)}°</span>
+                                <span class="text-slate-500">${Math.round(day.low)}°</span>
+                            </div>
+                        </div>`;
+                    $forecastList.append(html);
+                });
+            }
+
+            function renderRecentSearches() {
+                const $container = $('#recentSearches');
+                $container.empty();
+                recentSearches.forEach(city => {
+                    $container.append(`
+                        <button class="recent-city-btn bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium px-3 py-1.5 rounded-full border border-slate-700 transition-colors">
+                            ${city}
+                        </button>
+                    `);
+                });
+            }
+
+            function addToRecent(city) {
+                recentSearches = recentSearches.filter(c => c.toLowerCase() !== city.toLowerCase());
+                recentSearches.unshift(city);
+                if (recentSearches.length > 5) recentSearches.pop();
+                localStorage.setItem('weather_recent', JSON.stringify(recentSearches));
+                renderRecentSearches();
+            }
+
+            function updateUIState() {
+                if (apiKey) {
+                    $demoBanner.slideUp(200);
+                    $apiKeyInput.val(apiKey);
+                    $('#disconnectKeyBtn').removeClass('hidden');
+                } else {
+                    $demoBanner.slideDown(200);
+                    $apiKeyInput.val('');
+                    $('#disconnectKeyBtn').addClass('hidden');
+                }
+            }
+
+            function disconnectKey() {
+                apiKey = '';
+                localStorage.removeItem(STORAGE_KEY);
+                updateUIState();
+                showToast('API Key disconnected.', 'info');
+                $modal.fadeOut(200);
+                fetchWeatherData($('#cityName').text() || recentSearches[0]);
+            }
+
+            $searchForm.on('submit', function (e) {
+                e.preventDefault();
+                const val = $searchInput.val().trim();
+                if (val) {
+                    fetchWeatherData(val);
+                    $searchInput.val('').blur();
+                }
+            });
+
+            $(document).on('click', '.recent-city-btn', function () {
+                fetchWeatherData($(this).text().trim());
+            });
+
+            $('#openSettingsBtn').on('click', () => $modal.fadeIn(200).css('display', 'flex'));
+            $('#closeModalBtn, #closeModalBg').on('click', () => $modal.fadeOut(200));
+
+            $('#saveKeyBtn').on('click', function () {
+                const val = $apiKeyInput.val().trim();
+                if (val) {
+                    apiKey = val;
+                    localStorage.setItem(STORAGE_KEY, apiKey);
+                    updateUIState();
+                    showToast('Settings saved successfully.', 'success');
+                    $modal.fadeOut(200);
+                    fetchWeatherData(recentSearches[0]);
+                }
+            });
+
+            $('#disconnectKeyBtn').on('click', disconnectKey);
+
+            function showToast(message, type = 'info') {
+                const colors = type === 'error' ? 'bg-red-500/90 border-red-400 text-white' :
+                    type === 'success' ? 'bg-green-500/90 border-green-400 text-white' :
+                        'bg-slate-800/90 border-slate-600 text-slate-100';
+                const $toast = $(`<div class="${colors} border backdrop-blur-md px-4 py-3 rounded-lg shadow-lg text-sm font-medium flex items-center gap-2 transform transition-all duration-300 translate-y-[-100%] opacity-0">
+                                    <span>${message}</span>
+                                  </div>`);
+                $('#toastContainer').append($toast);
+
+                setTimeout(() => $toast.removeClass('translate-y-[-100%] opacity-0'), 10);
+                setTimeout(() => {
+                    $toast.addClass('opacity-0 scale-95');
+                    setTimeout(() => $toast.remove(), 300);
+                }, 4000);
+            }
+
+            function getWeatherIcon(condition) {
+                condition = condition.toLowerCase();
+                if (condition.includes('cloud')) return 'fa-solid fa-cloud';
+                if (condition.includes('rain') || condition.includes('drizzle')) return 'fa-solid fa-cloud-rain';
+                if (condition.includes('thunder')) return 'fa-solid fa-cloud-bolt';
+                if (condition.includes('snow')) return 'fa-solid fa-snowflake';
+                if (condition.includes('clear')) return 'fa-solid fa-sun';
+                return 'fa-solid fa-smog';
+            }
+
+            function formatApiData(current, forecast) {
+                const dailyForecasts = forecast.list.filter(item => item.dt_txt.includes('12:00:00')).slice(0, 5).map(item => {
+                    const date = new Date(item.dt * 1000);
+                    return {
+                        dayName: date.toLocaleDateString('en-US', { weekday: 'short' }),
+                        high: item.main.temp_max + 2,
+                        low: item.main.temp_min - 3,
+                        condition: item.weather[0].main
+                    };
+                });
+
+                return {
+                    current: {
+                        name: current.name,
+                        temp: current.main.temp,
+                        feelsLike: current.main.feels_like,
+                        high: current.main.temp_max,
+                        low: current.main.temp_min,
+                        condition: current.weather[0].main,
+                        wind: (current.wind.speed * 3.6).toFixed(1),
+                        humidity: current.main.humidity,
+                        pressure: current.main.pressure
+                    },
+                    forecast: dailyForecasts
+                };
+            }
+
+            function generateMockData(cityName) {
+                const baseTemp = 10 + (cityName.length * 1.5) % 20;
+                const conditions = ['Clear', 'Clouds', 'Rain', 'Snow', 'Thunderstorm'];
+                const condition = conditions[cityName.length % conditions.length];
+                const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+                const todayIdx = new Date().getDay();
+
+                const forecast = Array.from({ length: 5 }).map((_, i) => ({
+                    dayName: days[(todayIdx + i) % 7],
+                    high: baseTemp + 4 + (Math.random() * 3),
+                    low: baseTemp - 3 - (Math.random() * 2),
+                    condition: conditions[(i + cityName.length) % conditions.length]
+                }));
+
+                return {
+                    current: {
+                        name: cityName.charAt(0).toUpperCase() + cityName.slice(1),
+                        temp: baseTemp,
+                        feelsLike: baseTemp - 1.5,
+                        high: baseTemp + 5,
+                        low: baseTemp - 4,
+                        condition: condition,
+                        wind: (5 + (cityName.length % 10)).toFixed(1),
+                        humidity: 40 + (cityName.length * 3) % 40,
+                        pressure: 1010 + (cityName.length % 15)
+                    },
+                    forecast: forecast
+                };
+            }
+        });
+    </script>
+</body>
+
+</html>
